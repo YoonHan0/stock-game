@@ -1,0 +1,40 @@
+# 로그 파일 및 디버그 파일
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# 의존성 및 빌드 산출물
+node_modules/
+dist/
+dist-ssr/
+
+# 환경 설정 및 로컬 설정 파일
+*.local
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 에디터 관련 파일/폴더
+.vscode/
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# JetBrains IDEs
+*.iml
+
+# 기타 OS/툴에서 생기는 임시 파일
+*.swp
+*.swo
+*.tmp
+Thumbs.db

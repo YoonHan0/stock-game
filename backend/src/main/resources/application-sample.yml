@@ -1,0 +1,23 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: stockgame
+  datasource:
+    url: ${URL}
+    username: ${USER_NAME}
+    password: ${PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+supabase:
+  jwt:
+    secret: ${SECRET}
+    issuer: ${ISSUER}

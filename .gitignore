@@ -1,0 +1,30 @@
+# 공통적으로(루트 기준) 무시해야 할 파일/폴더만 작성 (front, backend 각 폴더 밑 gitignore에서 처리하므로 중복 제외)
+
+# 노드/자바 모듈 및 임시 폴더
+node_modules/
+dist/
+
+# 환경 변수 파일
+.env
+
+# macOS
+.DS_Store
+
+# 로그 파일
+*.log
+
+# OS 별 임시 파일
+*.swp
+*.swo
+*.tmp
+
+# IDE/Editor 공통 설정(루트 기준만)
+.vscode/
+.idea/
+
+# 기타(루트에 생성될 수 있는 임시/에디터/버전관리 파일 예시)
+*.sublime-workspace
+*.sublime-project
+Thumbs.db
+
+# ---- 개별(frontend/, backend/) 폴더 설정은 각 폴더 내의 .gitignore에서 관리합니다 ----
