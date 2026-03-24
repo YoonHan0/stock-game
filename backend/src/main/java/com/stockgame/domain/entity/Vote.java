@@ -3,10 +3,9 @@ package com.stockgame.domain.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
-@Table(name = "votes")
+@Table(name = "vote")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -17,7 +16,7 @@ public class Vote {
     private Long vote_id;
 
     @Column(name = "user_id", nullable = false)
-    private UUID userId; // Supabase Auth의 UUID와 매핑
+    private Long userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quiz_id")

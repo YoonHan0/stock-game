@@ -13,8 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -47,12 +45,9 @@ public class QuizService {
         StockQuizDaily quiz = quizRepository.findById(dto.getQuizId())
                 .orElseThrow(() -> new RuntimeException("퀴즈를 찾을 수 없습니다."));
 
-        // String을 UUID로 변환 (표준 UUID 형식이 아니어도 해시값 기반으로 생성해줌)
-        UUID userUuid = UUID.nameUUIDFromBytes(dto.getUserId().getBytes());
-
         Vote vote = Vote.builder()
                 .quiz(quiz)
-                .userId(userUuid)
+                .userId(dto.getUserId())
                 .prediction(dto.getPrediction())
                 .build();
 
@@ -73,10 +68,7 @@ public class QuizService {
         return new VoteStatsDto(up, down, upPercent, downPercent);
     }
 
-    public boolean getIsVoteState(Long quizId, String userId) {
-
-        UUID userUUID = UUID.nameUUIDFromBytes(userId.getBytes());
-
-        return voteRepository.existsByUserIdAndQuizQuizId(userUUID, quizId);
+    public boolean getIsVoteState(Long quizId, Long userId) {
+        return voteRepository.existsByUserIdAndQuizQuizId(userId, quizId);
     }
 }
