@@ -27,6 +27,16 @@ export const login = async (credentials) => {
     return response.data;
 };
 
+export const signup = async (payload) => {
+    const response = await api.post('/auth/signup', payload);
+    return response.data;
+};
+
+export const logout = async () => {
+    const response = await api.post('/auth/logout');
+    return response.data;
+};
+
 export const getTodayQuiz = async () => {
     const response = await api.get('/quiz/today');
     return response.data;

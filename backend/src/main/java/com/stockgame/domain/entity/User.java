@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users",
@@ -25,9 +26,9 @@ public class User {
     @Column(nullable = false, unique = true, length = 320)
     private String email;
 
-    /** 일반(LOCAL) 가입용. 소셜 로그인 시 null 허용 */
-    @Column
-    private String password;
+    /** 일반(LOCAL) 가입용 비밀번호 해시. 소셜 로그인 시 null 허용 */
+    @Column(name = "password")
+    private String passwordHash;
 
     @Column(nullable = false, length = 50)
     private String nickname;
@@ -65,7 +66,7 @@ public class User {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
-        this.updatedAt  = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
@@ -89,18 +90,28 @@ public class User {
     }
 
     /**
+     * 일반(LOCAL) 가입 사용자 생성.
+     */
+    public static User ofLocal(String email, String passwordHash, String nickname) {
+        return User.builder()
+                .email(email)
+                .passwordHash(passwordHash)
+                .nickname(nickname)
+                .provider(AuthProvider.LOCAL)
+                .providerId("local_:" + UUID.randomUUID())
+                .role(UserRole.USER)
+                .points(0L)
+                .build();
+    }
+
+    /**
      * 소셜 로그인으로 신규 사용자를 생성하는 정적 팩토리 메서드.
-     *
-     * @param email      소셜 제공자로부터 받은 이메일
-     * @param nickname   초기 닉네임 (소셜 프로필 이름 등)
-     * @param provider   소셜 제공자 (GOOGLE, KAKAO 등)
-     * @param providerId 소셜 제공자가 발급한 고유 식별자
-     * @return 저장 전 새 User 인스턴스
      */
     public static User ofSocial(String email, String nickname,
                                 AuthProvider provider, String providerId) {
         return User.builder()
                 .email(email)
+                .passwordHash(null)
                 .nickname(nickname)
                 .provider(provider)
                 .providerId(providerId)
@@ -109,22 +120,17 @@ public class User {
                 .build();
     }
 
-    /**
-     * 소셜 재로그인 시 닉네임을 최신 소셜 프로필로 동기화합니다.
-     *
-     * @param nickname 소셜 제공자로부터 받은 최신 닉네임
-     */
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }
 
-    /**
-     * 소셜 로그인 재인증 시 provider/providerId/nickname 을 최신 정보로 동기화합니다.
-     */
+    public void updatePasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     public void updateSocialInfo(AuthProvider provider, String providerId, String nickname) {
         this.provider = provider;
         this.providerId = providerId;
         this.nickname = nickname;
     }
 }
-

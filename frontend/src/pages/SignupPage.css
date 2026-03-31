@@ -1,0 +1,16 @@
+.auth-switch-copy {
+  margin: 8px 0 0;
+  color: #6b7684;
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-switch-link {
+  color: #3182f6;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.auth-switch-link:hover {
+  text-decoration: underline;
+}

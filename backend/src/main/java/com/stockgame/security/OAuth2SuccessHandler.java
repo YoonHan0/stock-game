@@ -5,6 +5,7 @@ import com.stockgame.domain.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
@@ -14,13 +15,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
-import java.time.Duration;
 
 @Component
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    private static final String REDIRECT_URL = "http://localhost:5173";
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String redirectUrl;
 
     private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
@@ -42,17 +43,9 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         String role = "ROLE_" + user.getRole().name();
         String token = jwtProvider.createToken(user.getId(), user.getEmail(), role);
-
-        ResponseCookie cookie = ResponseCookie.from("accessToken", token)
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Lax")
-                .path("/")
-                .maxAge(Duration.ofHours(1))
-                .build();
+        ResponseCookie cookie = jwtProvider.createAccessTokenCookie(token);
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        getRedirectStrategy().sendRedirect(request, response, REDIRECT_URL);
+        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 }
-

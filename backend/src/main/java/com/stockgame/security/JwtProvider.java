@@ -7,10 +7,12 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -19,12 +21,21 @@ import java.util.Date;
 @Component
 public class JwtProvider {
 
+    public static final String ACCESS_TOKEN_COOKIE_NAME = "accessToken";
+
     private static final String CLAIM_USER_ID = "userId";
     private static final String CLAIM_EMAIL = "email";
     private static final String CLAIM_ROLE = "role";
+    private static final Duration ACCESS_TOKEN_TTL = Duration.ofHours(1);
 
     @Value("${JWT_SECRET}")
     private String secret;
+
+    @Value("${app.auth.cookie.secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.auth.cookie.same-site:Lax}")
+    private String sameSite;
 
     private SecretKey key;
 
@@ -49,6 +60,26 @@ public class JwtProvider {
                 .expiration(Date.from(expiry))
                 .signWith(key)
                 .compact();
+    }
+
+    public ResponseCookie createAccessTokenCookie(String token) {
+        return ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME, token)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(sameSite)
+                .path("/")
+                .maxAge(ACCESS_TOKEN_TTL)
+                .build();
+    }
+
+    public ResponseCookie createExpiredAccessTokenCookie() {
+        return ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME, "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(sameSite)
+                .path("/")
+                .maxAge(Duration.ZERO)
+                .build();
     }
 
     public boolean validateToken(String token) {
@@ -85,4 +116,3 @@ public class JwtProvider {
                 .getPayload();
     }
 }
-
