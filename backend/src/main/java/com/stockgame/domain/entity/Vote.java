@@ -5,7 +5,13 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "vote")
+@Table(
+        name = "vote",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_vote_quiz_user",
+                columnNames = {"quiz_id", "user_id"}
+        )
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor

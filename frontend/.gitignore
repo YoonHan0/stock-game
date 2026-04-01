@@ -38,3 +38,6 @@ dist-ssr/
 *.swo
 *.tmp
 Thumbs.db
+
+# Copilot 관련 파일
+.github/agents/

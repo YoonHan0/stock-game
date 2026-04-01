@@ -72,13 +72,13 @@ public class AuthController {
     @ExceptionHandler(AuthBadRequestException.class)
     public ResponseEntity<ApiErrorResponseDto> handleBadRequest(AuthBadRequestException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiErrorResponseDto(e.getMessage()));
+                .body(new ApiErrorResponseDto("AUTH_BAD_REQUEST", e.getMessage()));
     }
 
     @ExceptionHandler(AuthUnauthorizedException.class)
     public ResponseEntity<ApiErrorResponseDto> handleUnauthorized(AuthUnauthorizedException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ApiErrorResponseDto(e.getMessage()));
+                .body(new ApiErrorResponseDto("AUTH_UNAUTHORIZED", e.getMessage()));
     }
 
     private Optional<User> resolveUser(Object principal) {

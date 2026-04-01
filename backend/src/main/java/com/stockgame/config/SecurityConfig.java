@@ -3,10 +3,13 @@ package com.stockgame.config;
 import com.stockgame.security.JwtAuthenticationFilter;
 import com.stockgame.security.OAuth2SuccessHandler;
 import com.stockgame.security.oauth2.CustomOAuth2UserService;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -14,7 +17,9 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -26,9 +31,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter            jwtAuthenticationFilter;
-    private final OAuth2SuccessHandler               oAuth2SuccessHandler;
-    private final CustomOAuth2UserService            customOAuth2UserService;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final CustomOAuth2UserService customOAuth2UserService;
 
     /**
      * 인증 없이 접근 가능한 경로
@@ -36,7 +41,8 @@ public class SecurityConfig {
     private static final String[] PERMIT_ALL_PATTERNS = {
             "/api/auth/**",
             "/login/**",
-            "/oauth2/**"
+            "/oauth2/**",
+            "/error"
     };
 
     @Bean
@@ -54,10 +60,23 @@ public class SecurityConfig {
 
                 // ── 경로별 접근 권한 ─────────────────────────────────────────────────
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
                         // OPTIONS preflight 는 인증 없이 항상 통과
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PERMIT_ALL_PATTERNS).permitAll()
                         .anyRequest().authenticated()
+                )
+
+                // ── API는 리다이렉트 대신 상태코드 응답으로 처리 ───────────────────────
+                .exceptionHandling(ex -> ex
+                        .defaultAuthenticationEntryPointFor(
+                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
+                                new AntPathRequestMatcher("/api/**")
+                        )
+                        .defaultAccessDeniedHandlerFor(
+                                (request, response, accessDeniedException) -> response.sendError(HttpServletResponse.SC_FORBIDDEN),
+                                new AntPathRequestMatcher("/api/**")
+                        )
                 )
 
                 // ── OAuth2 소셜 로그인 ────────────────────────────────────────────

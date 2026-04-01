@@ -6,6 +6,48 @@ import { useAuth } from '../auth/AuthContext';
 import Alert from '../components/Alert';
 import '../App.css';
 
+function getVoteErrorMessage(error) {
+
+  const status = error?.response?.status;
+  const responseData = error?.response?.data;
+  const serverMessage = typeof responseData === 'string'
+    ? responseData
+    : responseData?.message || '';
+  const serverCode = responseData?.code || '';
+
+  console.log("=== 투표 오류 메시지 확인 ===")
+  console.log("HTTP 상태 코드: ", status);
+  console.log("서버 응답 데이터: ", serverCode, responseData);
+  console.log("서버 응답 메시지: ", serverMessage);
+  console.log("=== 투표 오류 메시지 확인 끝 ===")
+
+  if (status === 409) {
+    if (serverCode === 'ALREADY_VOTED') {
+      return {
+        type: 'ALREADY_VOTED',
+        message: '이미 오늘 투표를 완료했습니다. 실시간 현황을 확인해 주세요.',
+      };
+    }
+    else if (serverCode === 'VOTE_TIME_RESTRICTED') {
+      return {
+        type: 'VOTE_TIME_RESTRICTED',
+        message: '투표 가능 시간이 아닙니다. 오전 9시부터 자정 전까지 참여할 수 있습니다.',
+      };
+    }
+    else if (serverCode === 'QUIZ_CLOSED') {
+      return {
+        type: 'QUIZ_CLOSED',
+        message: serverMessage || '이미 마감된 퀴즈입니다.',
+      };
+    }
+  }
+
+  return {
+    type: 'unknown',
+    message: '투표 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+  };
+}
+
 function VoteBar({ stats }) {
   const total = stats ? stats.upCount + stats.downCount : 0;
   const upPct = total === 0 ? 0 : stats.upPercentage;
@@ -59,8 +101,7 @@ function HomePage() {
   }, []);
 
   const fetchQuiz = useCallback(async () => {
-    const currentUserId = user?.id != null ? String(user.id) : null;
-    if (!currentUserId) {
+    if (!user) {
       setLoading(false);
       return;
     }
@@ -81,7 +122,7 @@ function HomePage() {
       }
 
       const [hasVoted, voteStats] = await Promise.all([
-        getIsVoteState(data.quizId, currentUserId),
+        getIsVoteState(data.quizId),
         getVoteStats(data.quizId),
       ]);
 
@@ -109,9 +150,7 @@ function HomePage() {
   }, []);
 
   const handleVote = async (prediction) => {
-    const currentUserId = user?.id != null ? String(user.id) : null;
-
-    if (!currentUserId) {
+    if (!user) {
       showAlert('warning', '로그인 후 투표할 수 있습니다.');
       return;
     }
@@ -120,7 +159,7 @@ function HomePage() {
       return;
     }
 
-    const alreadyVoted = await getIsVoteState(quiz.quizId, currentUserId);
+    const alreadyVoted = await getIsVoteState(quiz.quizId);
     if (alreadyVoted) {
       setVoted(true);
       await fetchStats(quiz.quizId);
@@ -130,13 +169,25 @@ function HomePage() {
 
     try {
       setSubmitting(true);
-      await submitVote({ quizId: quiz.quizId, prediction, userId: currentUserId });
+      await submitVote({ quizId: quiz.quizId, prediction });
       setVoted(true);
       await fetchStats(quiz.quizId);
       showAlert('success', prediction === 'UP' ? '상승에 투표하였습니다.' : '하락에 투표하였습니다.');
     } catch (error) {
       console.error('투표 중 오류가 발생했습니다.', error);
-      showAlert('error', '투표 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+      const voteError = getVoteErrorMessage(error);
+
+      if (voteError.type === 'ALREADY_VOTED') {
+        setVoted(true);
+        await fetchStats(quiz.quizId);
+        showAlert('warning', voteError.message);
+        return;
+      }
+
+      showAlert(
+        (voteError.type === 'VOTE_TIME_RESTRICTED' || voteError.type === 'QUIZ_CLOSED') 
+        ? 'warning' : 'error', voteError.message
+      );
     } finally {
       setSubmitting(false);
     }

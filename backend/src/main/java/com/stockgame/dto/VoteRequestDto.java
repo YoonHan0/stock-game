@@ -9,5 +9,4 @@ public class VoteRequestDto {
 
     private Long quizId;
     private String prediction; // "UP" 또는 "DOWN"
-    private Long userId;
 }

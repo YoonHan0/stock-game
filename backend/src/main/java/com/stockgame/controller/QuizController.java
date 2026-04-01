@@ -1,12 +1,16 @@
 package com.stockgame.controller;
 
 import com.stockgame.domain.entity.StockQuizDaily;
+import com.stockgame.dto.ApiErrorResponseDto;
 import com.stockgame.dto.QuizResponseDto;
 import com.stockgame.dto.VoteRequestDto;
 import com.stockgame.dto.VoteStatsDto;
 import com.stockgame.service.QuizService;
+import com.stockgame.service.QuizVoteConflictException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -14,8 +18,6 @@ import java.math.BigDecimal;
 @RestController
 @RequestMapping("/api/quiz")
 @RequiredArgsConstructor
-//@CrossOrigin(origins = "http://localhost:5173") // Vite 프론트엔드 포트 허용
-//@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class QuizController {
 
     private final QuizService quizService;
@@ -54,8 +56,9 @@ public class QuizController {
     }
 
     @PostMapping("/vote")
-    public ResponseEntity<String> vote(@RequestBody VoteRequestDto dto) {
-        quizService.saveVote(dto);
+    public ResponseEntity<String> vote(@RequestBody VoteRequestDto dto,
+                                       @AuthenticationPrincipal Object principal) {
+        quizService.saveVote(dto, principal);   // userId 결정 + 검증은 서비스에서 처리
         return ResponseEntity.ok("투표가 성공적으로 기록되었습니다!");
     }
 
@@ -67,9 +70,13 @@ public class QuizController {
     @GetMapping("/{quizId}/check-vote")
     public ResponseEntity<Boolean> getIsVoteState(
             @PathVariable("quizId") Long quizId,
-            @RequestParam("userId") Long userId) {
+            @AuthenticationPrincipal Object principal) {
+        return ResponseEntity.ok(quizService.getIsVoteState(quizId, principal)); // 서비스에서 처리
+    }
 
-        boolean hasVoted = quizService.getIsVoteState(quizId, userId);
-        return ResponseEntity.ok(hasVoted);
+    @ExceptionHandler(QuizVoteConflictException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleQuizVoteConflict(QuizVoteConflictException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponseDto(e.getCode(), e.getMessage()));
     }
 }

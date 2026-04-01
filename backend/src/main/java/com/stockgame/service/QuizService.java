@@ -3,12 +3,16 @@ package com.stockgame.service;
 import com.stockgame.domain.entity.StockQuizDaily;
 import com.stockgame.domain.entity.Vote;
 import com.stockgame.domain.repository.StockQuizRepository;
+import com.stockgame.domain.repository.UserRepository;
 import com.stockgame.domain.repository.VoteRepository;
 import com.stockgame.dto.VoteRequestDto;
 import com.stockgame.dto.VoteStatsDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -18,44 +22,80 @@ import java.time.LocalTime;
 @RequiredArgsConstructor
 public class QuizService {
 
+    private static final LocalTime VOTE_START = LocalTime.of(9, 0);        // 09:00 이상
+    private static final LocalTime VOTE_END = LocalTime.of(23, 59, 59);    // 23:59:59 이하
+
     private final StockQuizRepository quizRepository;
     private final StockScraper stockScraper;
     private final VoteRepository voteRepository;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public StockQuizDaily getTodayQuiz() {
         LocalDate today = LocalDate.now();
-        // 오늘 날짜의 퀴즈가 DB에 있는지 확인
         return quizRepository.findByQuizDate(today)
                 .orElseThrow(() -> new RuntimeException("오늘의 퀴즈가 생성되지 않았습니다."));
     }
 
-    // 현재가를 실시간으로 반영하여 정보를 내려주는 로직
     public BigDecimal getCurrentLivePrice(String stockCode) {
         return stockScraper.getStockPrice(stockCode);
     }
 
-    // 장마감 여부 판단 (오후 4시 기준)
     public boolean isMarketClosed() {
         return LocalTime.now().isAfter(LocalTime.of(16, 0));
     }
 
     @Transactional
-    public void saveVote(VoteRequestDto dto) {
+    public void saveVote(VoteRequestDto dto, Object principal) {
+        Long userId = resolveUserId(principal);
+
+        LocalTime now = LocalTime.now();
+        if (now.isBefore(VOTE_START) || now.isAfter(VOTE_END)) {
+            throw new QuizVoteConflictException(
+                    "VOTE_TIME_RESTRICTED",
+                    "투표는 오전 9시부터 오후 11시 59분까지 가능합니다.");
+        }
+
         StockQuizDaily quiz = quizRepository.findById(dto.getQuizId())
-                .orElseThrow(() -> new RuntimeException("퀴즈를 찾을 수 없습니다."));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "퀴즈를 찾을 수 없습니다. quizId=" + dto.getQuizId()));
+
+        if (!"OPEN".equals(quiz.getStatus())) {
+            throw new QuizVoteConflictException(
+                    "QUIZ_CLOSED",
+                    "이미 마감된 퀴즈입니다.");
+        }
+
+        if (voteRepository.existsByUserIdAndQuizQuizId(userId, dto.getQuizId())) {
+            throw new QuizVoteConflictException(
+                    "ALREADY_VOTED",
+                    "이미 투표한 퀴즈입니다.");
+        }
 
         Vote vote = Vote.builder()
                 .quiz(quiz)
-                .userId(dto.getUserId())
+                .userId(userId)
                 .prediction(dto.getPrediction())
                 .build();
 
         voteRepository.save(vote);
     }
 
-    public VoteStatsDto getVoteStats(Long quizId) {
+    private Long resolveUserId(Object principal) {
+        if (principal instanceof Long id) {
+            return id;
+        }
+        if (principal instanceof String email && StringUtils.hasText(email)) {
+            return userRepository.findByEmail(email)
+                    .map(u -> u.getId())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.UNAUTHORIZED,
+                            "인증 정보로 사용자를 찾을 수 없습니다. email=" + email));
+        }
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.");
+    }
 
+    public VoteStatsDto getVoteStats(Long quizId) {
         long up = voteRepository.countByQuizQuizIdAndPrediction(quizId, "UP");
         long down = voteRepository.countByQuizQuizIdAndPrediction(quizId, "DOWN");
         long total = up + down;
@@ -68,7 +108,8 @@ public class QuizService {
         return new VoteStatsDto(up, down, upPercent, downPercent);
     }
 
-    public boolean getIsVoteState(Long quizId, Long userId) {
+    public boolean getIsVoteState(Long quizId, Object principal) {
+        Long userId = resolveUserId(principal);
         return voteRepository.existsByUserIdAndQuizQuizId(userId, quizId);
     }
 }
