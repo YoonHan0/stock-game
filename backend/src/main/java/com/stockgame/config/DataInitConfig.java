@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
@@ -29,36 +30,33 @@ public class DataInitConfig {
         log.info("=== 초기 데이터 생성 시작 ===");
 
         return args -> {
-            // 1. 기본 종목 데이터 (삼성전자) 생성
-            String samsungCode = "005930";
-            if (!stockRepository.existsById(samsungCode)) {
-                Stock samsung = Stock.builder()
-                        .stockCode(samsungCode)
-                        .stockName("삼성전자")
-                        .isActive(true)
-                        .build();
-                stockRepository.save(samsung);
-                log.info("초기 데이터: 삼성전자 등록 완료");
-            }
-
-            // 2. 오늘의 퀴즈 데이터 생성 (없을 경우에만)
             LocalDate today = LocalDate.now();
-            if (quizRepository.findByQuizDate(today).isEmpty()) {
-                Stock samsung = stockRepository.findById(samsungCode).orElseThrow();
 
-                // 스크래퍼를 이용해 현재가(기준가) 가져오기
-                BigDecimal currentPrice = stockScraper.getStockPrice(samsungCode);
-
-                StockQuizDaily todayQuiz = StockQuizDaily.builder()
-                        .quizDate(today)
-                        .stock(samsung)
-                        .base_price(currentPrice)
-                        .status("OPEN")
-                        .build();
-
-                quizRepository.save(todayQuiz);
-                log.info("초기 데이터: {} 퀴즈 생성 완료 (기준가: {})", today, currentPrice);
+            if (quizRepository.findByQuizDate(today).isPresent()) {
+                log.info("오늘의 퀴즈가 이미 존재합니다. 초기화를 건너뜁니다.");
+                return;
             }
+
+            List<Stock> activeStocks = stockRepository.findByIsActiveTrueOrderByStockCodeAsc();
+            if (activeStocks.isEmpty()) {
+                log.warn("활성화된 종목이 없습니다. 퀴즈를 생성할 수 없습니다.");
+                return;
+            }
+
+            // is_active=true 종목 중 stock_code가 가장 작은 종목 선택
+            Stock selectedStock = activeStocks.get(0);
+
+            BigDecimal currentPrice = stockScraper.getStockPrice(selectedStock.getStockCode());
+
+            StockQuizDaily todayQuiz = StockQuizDaily.builder()
+                    .quizDate(today)
+                    .stock(selectedStock)
+                    .base_price(currentPrice)
+                    .status("OPEN")
+                    .build();
+
+            quizRepository.save(todayQuiz);
+            log.info("오늘의 퀴즈 생성 완료: {} ({}) 기준가={}", selectedStock.getStockName(), selectedStock.getStockCode(), currentPrice);
         };
     }
 }
