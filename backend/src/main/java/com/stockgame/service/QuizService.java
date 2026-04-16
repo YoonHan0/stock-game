@@ -22,8 +22,8 @@ import java.time.LocalTime;
 @RequiredArgsConstructor
 public class QuizService {
 
-    private static final LocalTime VOTE_START = LocalTime.of(9, 0);        // 09:00 이상
-    private static final LocalTime VOTE_END = LocalTime.of(23, 59, 59);    // 23:59:59 이하
+    private static final LocalTime VOTE_START = LocalTime.of(9, 0);
+    private static final LocalTime VOTE_END = LocalTime.of(20, 0);
 
     private final StockQuizRepository quizRepository;
     private final StockScraper stockScraper;
@@ -42,7 +42,7 @@ public class QuizService {
     }
 
     public boolean isMarketClosed() {
-        return LocalTime.now().isAfter(LocalTime.of(16, 0));
+        return LocalTime.now().isAfter(LocalTime.of(20, 0));
     }
 
     @Transactional
@@ -53,12 +53,18 @@ public class QuizService {
         if (now.isBefore(VOTE_START) || now.isAfter(VOTE_END)) {
             throw new QuizVoteConflictException(
                     "VOTE_TIME_RESTRICTED",
-                    "투표는 오전 9시부터 오후 11시 59분까지 가능합니다.");
+                    "투표는 오전 9시부터 오후 8시까지 가능합니다.");
         }
 
         StockQuizDaily quiz = quizRepository.findById(dto.getQuizId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "퀴즈를 찾을 수 없습니다. quizId=" + dto.getQuizId()));
+
+        if (!quiz.getQuizDate().equals(LocalDate.now())) {
+            throw new QuizVoteConflictException(
+                    "QUIZ_CLOSED",
+                    "오늘의 퀴즈가 아닙니다.");
+        }
 
         if (!"OPEN".equals(quiz.getStatus())) {
             throw new QuizVoteConflictException(

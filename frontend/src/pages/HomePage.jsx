@@ -4,6 +4,7 @@ import { TrendingUp, TrendingDown, RefreshCw, LogOut } from 'lucide-react';
 import { getTodayQuiz, submitVote, getVoteStats, getIsVoteState } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import Alert from '../components/Alert';
+import BottomNav from '../components/BottomNav';
 import '../App.css';
 
 function getVoteErrorMessage(error) {
@@ -31,7 +32,7 @@ function getVoteErrorMessage(error) {
     else if (serverCode === 'VOTE_TIME_RESTRICTED') {
       return {
         type: 'VOTE_TIME_RESTRICTED',
-        message: '투표 가능 시간이 아닙니다. 오전 9시부터 자정 전까지 참여할 수 있습니다.',
+        message: '투표 가능 시간이 아닙니다. 오전 9시부터 오후 8시까지 참여할 수 있습니다.',
       };
     }
     else if (serverCode === 'QUIZ_CLOSED') {
@@ -232,7 +233,7 @@ function HomePage() {
   }
 
   return (
-    <div className="app-container">
+    <div className="app-container has-bottom-nav">
       <div className="stock-card">
         <div className="card-top">
           <span className="badge">오늘의 주식 퀴즈</span>
@@ -255,7 +256,7 @@ function HomePage() {
           <p className="game-desc">오늘 종가 기준으로 <strong>내일 종가</strong>가 오를지, 내릴지 예측해 보세요</p>
           <div className="price-row">
             <div className="price-item">
-              <span className="price-label blue">현재가</span>
+              <span className="price-label blue">{quiz.marketClosed ? '종가' : '현재가'}</span>
               <span className="price-value blue">{quiz.currentPrice?.toLocaleString()}원</span>
             </div>
           </div>
@@ -303,6 +304,7 @@ function HomePage() {
           </div>
         )}
       </div>
+      <BottomNav />
     </div>
   );
 }

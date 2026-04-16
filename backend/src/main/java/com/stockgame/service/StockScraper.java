@@ -15,27 +15,22 @@ import java.net.http.HttpResponse;
 @Component
 public class StockScraper {
 
-    // Java 21의 HttpClient 활용
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     public BigDecimal getStockPrice(String stockCode) {
         String url = "https://finance.naver.com/item/main.naver?code=" + stockCode;
 
         try {
-            // 1. HTTP 요청 생성
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
-                    .header("User-Agent", "Mozilla/5.0") // 차단 방지용 헤더
+                    .header("User-Agent", "Mozilla/5.0")
                     .GET()
                     .build();
 
-            // 2. 응답 받기
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-            // 3. Jsoup으로 HTML 파싱
             Document doc = Jsoup.parse(response.body());
 
-            // 네이버 금융의 현재가 위치 (클래스명: no_today)
             Elements priceElements = doc.select(".no_today .blind");
 
             if (!priceElements.isEmpty()) {
@@ -43,9 +38,10 @@ public class StockScraper {
                 return new BigDecimal(priceStr);
             }
 
+            throw new RuntimeException("가격 정보를 파싱할 수 없습니다. stockCode=" + stockCode);
+
         } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
+            throw new RuntimeException("주가 스크래핑 실패. stockCode=" + stockCode, e);
         }
-        return BigDecimal.ZERO;
     }
 }

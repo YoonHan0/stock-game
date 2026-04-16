@@ -4,6 +4,8 @@ import PublicRoute from './components/PublicRoute';
 import LoginScreen from './components/LoginScreen';
 import HomePage from './pages/HomePage';
 import SignupPage from './pages/SignupPage';
+import MyPage from './pages/MyPage';
+import RankingPage from './pages/RankingPage';
 
 function App() {
   return (
@@ -15,6 +17,8 @@ function App() {
 
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/mypage" element={<MyPage />} />
+        <Route path="/ranking" element={<RankingPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

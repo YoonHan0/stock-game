@@ -54,6 +54,25 @@ export const getVoteStats = async (quizId) => {
 
 export const getIsVoteState = async (quizId) => {
     const response = await api.get(`/quiz/${quizId}/check-vote`);
+    return response.data;
+};
 
+export const getUserProfile = async () => {
+    const response = await api.get('/user/profile');
+    return response.data;
+};
+
+export const getVoteHistory = async (page = 0, size = 10) => {
+    const response = await api.get('/user/vote-history', { params: { page, size } });
+    return response.data;
+};
+
+export const getTopRankings = async (limit = 5) => {
+    const response = await api.get('/ranking/top', { params: { limit } });
+    return response.data;
+};
+
+export const getMyRanking = async () => {
+    const response = await api.get('/ranking/me');
     return response.data;
 };

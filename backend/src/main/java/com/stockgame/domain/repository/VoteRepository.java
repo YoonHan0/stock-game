@@ -1,12 +1,23 @@
 package com.stockgame.domain.repository;
 
 import com.stockgame.domain.entity.Vote;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
 
 public interface VoteRepository extends JpaRepository<Vote, Long> {
 
     boolean existsByUserIdAndQuizQuizId(Long userId, Long quizId);
 
-    // 특정 퀴즈의 예측값 별로 개수를 세는 메서드
     long countByQuizQuizIdAndPrediction(Long quizId, String prediction);
+
+    List<Vote> findByQuizQuizId(Long quizId);
+
+    Page<Vote> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+
+    long countByUserId(Long userId);
+
+    long countByUserIdAndIsCorrectTrue(Long userId);
 }

@@ -2,6 +2,7 @@ package com.stockgame.dto;
 
 import lombok.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Getter @Setter @Builder
 @AllArgsConstructor @NoArgsConstructor
@@ -10,9 +11,12 @@ public class QuizResponseDto {
     private Long quizId;
     private String stockName;
     private String stockCode;
-    private BigDecimal basePrice;       // 퀴즈 생성 시점 기준가
-    private BigDecimal currentPrice;    // 현재 실시간 가격
-    private boolean isMarketClosed;     // 오후 4시 이후인지 여부
+    private BigDecimal basePrice;
+    private BigDecimal currentPrice;
+    private boolean isMarketClosed;
+    private LocalDate quizDate;
+    private String quizResult;
+    private String status;
 
     @Override
     public String toString() {

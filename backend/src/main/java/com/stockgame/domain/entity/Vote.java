@@ -19,7 +19,8 @@ import java.time.LocalDateTime;
 public class Vote {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long vote_id;
+    @Column(name = "vote_id")
+    private Long voteId;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
@@ -31,12 +32,25 @@ public class Vote {
     @Column(nullable = false)
     private String prediction; // "UP" or "DOWN"
 
-    private Boolean is_correct;
+    @Column(name = "is_correct")
+    private Boolean isCorrect;
 
-    private LocalDateTime created_at;
+    @Column(name = "points_earned")
+    private Integer pointsEarned;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     @PrePersist
     public void prePersist() {
-        this.created_at = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public void setIsCorrect(Boolean isCorrect) {
+        this.isCorrect = isCorrect;
+    }
+
+    public void setPointsEarned(Integer pointsEarned) {
+        this.pointsEarned = pointsEarned;
     }
 }

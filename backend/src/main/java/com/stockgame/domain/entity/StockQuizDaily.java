@@ -33,11 +33,33 @@ public class StockQuizDaily {
     @Builder.Default
     private String status = "OPEN";
 
+    @Column(name = "quiz_result")
+    private String quizResult;
+
+    @Column(name = "settled_at")
+    private LocalDateTime settledAt;
+
     private LocalDateTime created_at;
 
     @PrePersist
     public void prePersist() {
         this.created_at = LocalDateTime.now();
+    }
+
+    public void setFinalPrice(BigDecimal finalPrice) {
+        this.final_price = finalPrice;
+    }
+
+    public void setQuizResult(String quizResult) {
+        this.quizResult = quizResult;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public void setSettledAt(LocalDateTime settledAt) {
+        this.settledAt = settledAt;
     }
 
     @Override

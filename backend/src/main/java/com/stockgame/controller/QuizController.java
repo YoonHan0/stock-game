@@ -25,21 +25,10 @@ public class QuizController {
     @GetMapping("/today")
     public ResponseEntity<QuizResponseDto> getTodayQuiz() {
 
-        System.out.println("=== 오늘의 퀴즈 호출 ===");
-
-        // 1. 오늘 날짜의 퀴즈 정보 조회
         StockQuizDaily quiz = quizService.getTodayQuiz();
 
-        System.out.println("=== 퀴즈 확인 ===");
-        System.out.println(quiz.toString());
-
-        // 2. 실시간 가격 정보 스크래핑
         BigDecimal currentLivePrice = quizService.getCurrentLivePrice(quiz.getStock().getStockCode());
 
-        System.out.println("=== 현재가 확인 ===");
-        System.out.println(currentLivePrice);
-
-        // 3. DTO 변환 및 반환
         QuizResponseDto response = QuizResponseDto.builder()
                 .quizId(quiz.getQuizId())
                 .stockName(quiz.getStock().getStockName())
@@ -47,10 +36,10 @@ public class QuizController {
                 .basePrice(quiz.getBase_price())
                 .currentPrice(currentLivePrice)
                 .isMarketClosed(quizService.isMarketClosed())
+                .quizDate(quiz.getQuizDate())
+                .quizResult(quiz.getQuizResult())
+                .status(quiz.getStatus())
                 .build();
-
-        System.out.println("=== 반환값 확인 ===");
-        System.out.println(response);
 
         return ResponseEntity.ok(response);
     }
