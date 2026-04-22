@@ -1,0 +1,4 @@
+JWT_SECRET: local-dev-secret-key-123456789012
+JWT_ISSUER: local-dev
+GOOGLE_CLIENT_ID: local-google-client
+GOOGLE_CLIENT_SECRET: local-google-secret

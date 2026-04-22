@@ -1,6 +1,5 @@
 package com.stockgame.service;
 
-import com.stockgame.domain.entity.User;
 import com.stockgame.domain.repository.UserRepository;
 import com.stockgame.dto.MyRankingDto;
 import com.stockgame.dto.RankingEntryDto;
@@ -12,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -23,50 +21,44 @@ public class RankingService {
 
     @Transactional(readOnly = true)
     public List<RankingEntryDto> getTopRankings(int limit) {
-        List<User> topUsers = userRepository.findByOrderByPointsDesc(PageRequest.of(0, limit));
+        List<RankingEntryDto> topUsers = userRepository.findTopRankingEntries(PageRequest.of(0, limit));
 
-        List<RankingEntryDto> rankings = new ArrayList<>();
         long currentRank = 0;
         Long prevPoints = null;
 
         for (int i = 0; i < topUsers.size(); i++) {
-            User u = topUsers.get(i);
-            if (prevPoints == null || !u.getPoints().equals(prevPoints)) {
+            RankingEntryDto entry = topUsers.get(i);
+            if (prevPoints == null || !entry.getPoints().equals(prevPoints)) {
                 currentRank = i + 1;
             }
-            prevPoints = u.getPoints();
-
-            rankings.add(RankingEntryDto.builder()
-                    .rank(currentRank)
-                    .nickname(u.getNickname())
-                    .points(u.getPoints())
-                    .build());
+            prevPoints = entry.getPoints();
+            entry.setRank(currentRank);
         }
 
-        return rankings;
+        return topUsers;
     }
 
     @Transactional(readOnly = true)
     public MyRankingDto getMyRanking(Object principal) {
-        User user = resolveUser(principal);
+        Long points = resolveUserPoints(principal);
         long totalUsers = userRepository.count();
-        long rank = userRepository.countByPointsGreaterThan(user.getPoints()) + 1;
+        long rank = userRepository.countByPointsGreaterThan(points) + 1;
 
         return MyRankingDto.builder()
                 .rank(rank)
                 .totalUsers(totalUsers)
-                .points(user.getPoints())
+                .points(points)
                 .build();
     }
 
-    private User resolveUser(Object principal) {
+    private Long resolveUserPoints(Object principal) {
         if (principal instanceof Long id) {
-            return userRepository.findById(id)
+            return userRepository.findPointsById(id)
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
         }
         if (principal instanceof String email && StringUtils.hasText(email)) {
-            return userRepository.findByEmail(email)
+            return userRepository.findPointsByEmail(email)
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.UNAUTHORIZED, "인증 정보로 사용자를 찾을 수 없습니다."));
         }

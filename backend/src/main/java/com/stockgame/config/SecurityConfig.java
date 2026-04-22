@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -34,6 +35,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final Environment environment;
 
     /**
      * 인증 없이 접근 가능한 경로
@@ -59,13 +61,15 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 // ── 경로별 접근 권한 ─────────────────────────────────────────────────
-                .authorizeHttpRequests(auth -> auth
-                        .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
-                        // OPTIONS preflight 는 인증 없이 항상 통과
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(PERMIT_ALL_PATTERNS).permitAll()
-                        .anyRequest().authenticated()
-                )
+                .authorizeHttpRequests(auth -> {
+                    auth.dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll();
+                    auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
+                    auth.requestMatchers(PERMIT_ALL_PATTERNS).permitAll();
+                    if (environment.matchesProfiles("local")) {
+                        auth.requestMatchers("/api/local/**").permitAll();
+                    }
+                    auth.anyRequest().authenticated();
+                })
 
                 // ── API는 리다이렉트 대신 상태코드 응답으로 처리 ───────────────────────
                 .exceptionHandling(ex -> ex

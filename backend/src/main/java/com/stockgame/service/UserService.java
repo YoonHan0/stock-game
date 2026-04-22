@@ -51,7 +51,7 @@ public class UserService {
 
         var items = votePage.getContent().stream().map(vote -> {
             var quiz = vote.getQuiz();
-            String settlementStatus = "CLOSED".equals(quiz.getStatus()) ? "정산 완료" : "정산 대기";
+            String settlementStatus = "SETTLED".equals(quiz.getStatus()) ? "정산 완료" : "정산 대기";
 
             return VoteHistoryItemDto.builder()
                     .quizId(quiz.getQuizId())

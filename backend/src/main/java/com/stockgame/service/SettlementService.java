@@ -7,6 +7,7 @@ import com.stockgame.domain.repository.MarketHolidayRepository;
 import com.stockgame.domain.repository.StockQuizRepository;
 import com.stockgame.domain.repository.UserRepository;
 import com.stockgame.domain.repository.VoteRepository;
+import com.stockgame.dto.ScheduleTriggerResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,6 +29,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class SettlementService {
 
+    private static final List<String> SETTLEABLE_STATUSES = List.of("OPEN", "CLOSED");
+
     private final StockQuizRepository quizRepository;
     private final VoteRepository voteRepository;
     private final UserRepository userRepository;
@@ -36,33 +40,89 @@ public class SettlementService {
     @Scheduled(cron = "0 5 20 * * *", zone = "Asia/Seoul")
     @Transactional
     public void settleOpenQuizzes() {
-        LocalDate today = LocalDate.now();
+        ScheduleTriggerResponseDto result = triggerSettlement();
+        log.info("[{}] {}", result.action(), result.message());
+    }
+
+    @Transactional
+    public ScheduleTriggerResponseDto triggerSettlement() {
+        LocalDate today = currentDate();
 
         DayOfWeek dow = today.getDayOfWeek();
         if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) {
-            log.info("오늘({})은 주말입니다. 정산을 건너뜁니다.", today);
-            return;
+            return new ScheduleTriggerResponseDto(
+                    "settle",
+                    false,
+                    0,
+                    "오늘(" + today + ")은 주말이라 정산을 건너뜁니다.");
         }
 
         if (holidayRepository.existsByHolidayDate(today)) {
-            log.info("오늘({})은 휴장일입니다. 정산을 건너뜁니다.", today);
-            return;
+            return new ScheduleTriggerResponseDto(
+                    "settle",
+                    false,
+                    0,
+                    "오늘(" + today + ")은 휴장일이라 정산을 건너뜁니다.");
         }
 
-        List<StockQuizDaily> openQuizzes = quizRepository.findByStatusAndQuizDateBefore("OPEN", today);
+        List<StockQuizDaily> quizzesToSettle =
+                new ArrayList<>(quizRepository.findByStatusInAndQuizDateBefore(SETTLEABLE_STATUSES, today));
 
-        if (openQuizzes.isEmpty()) {
-            log.info("정산할 퀴즈가 없습니다.");
-            return;
+        if (quizzesToSettle.isEmpty()) {
+            return new ScheduleTriggerResponseDto(
+                    "settle",
+                    false,
+                    0,
+                    "정산할 퀴즈가 없습니다.");
         }
 
-        log.info("정산 대상 퀴즈 {}건 발견", openQuizzes.size());
-
-        for (StockQuizDaily quiz : openQuizzes) {
+        for (StockQuizDaily quiz : quizzesToSettle) {
             settleQuiz(quiz);
         }
 
-        log.info("정산 배치 완료: {}건 처리", openQuizzes.size());
+        return new ScheduleTriggerResponseDto(
+                "settle",
+                true,
+                quizzesToSettle.size(),
+                "정산 배치 완료: " + quizzesToSettle.size() + "건 처리했습니다.");
+    }
+
+    @Transactional
+    public ScheduleTriggerResponseDto triggerSettleToday() {
+        LocalDate today = currentDate();
+        StockQuizDaily todayQuiz = quizRepository.findByQuizDate(today).orElse(null);
+
+        if (todayQuiz == null) {
+            return new ScheduleTriggerResponseDto(
+                    "settle-today",
+                    false,
+                    0,
+                    "오늘(" + today + ") 퀴즈가 없어 당일 정산을 건너뜁니다.");
+        }
+
+        String currentStatus = todayQuiz.getStatus();
+        if (!isSettleableStatus(currentStatus)) {
+            return new ScheduleTriggerResponseDto(
+                    "settle-today",
+                    false,
+                    0,
+                    "오늘(" + today + ") 퀴즈는 현재 상태가 " + currentStatus
+                            + " 이라 당일 정산 대상이 아닙니다. 정산 가능 상태="
+                            + String.join(", ", SETTLEABLE_STATUSES));
+        }
+
+        Long quizId = todayQuiz.getQuizId();
+        settleQuiz(todayQuiz);
+        return new ScheduleTriggerResponseDto(
+                "settle-today",
+                true,
+                1,
+                "오늘(" + today + ") 퀴즈 당일 정산 완료: quizId=" + quizId
+                        + ", previousStatus=" + currentStatus + ", currentStatus=SETTLED");
+    }
+
+    private boolean isSettleableStatus(String status) {
+        return SETTLEABLE_STATUSES.contains(status);
     }
 
     private void settleQuiz(StockQuizDaily quiz) {
@@ -82,7 +142,7 @@ public class SettlementService {
         }
 
         quiz.setQuizResult(quizResult);
-        quiz.setStatus("CLOSED");
+        quiz.setStatus("SETTLED");
         quiz.setSettledAt(LocalDateTime.now());
 
         List<Vote> votes = voteRepository.findByQuizQuizId(quiz.getQuizId());
@@ -118,5 +178,9 @@ public class SettlementService {
         log.info("퀴즈 정산 완료: quizId={}, date={}, result={}, base={}, final={}",
                 quiz.getQuizId(), quiz.getQuizDate(), quizResult,
                 quiz.getBase_price(), finalPrice);
+    }
+
+    LocalDate currentDate() {
+        return LocalDate.now();
     }
 }

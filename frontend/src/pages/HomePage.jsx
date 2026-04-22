@@ -92,6 +92,7 @@ function HomePage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [alertState, setAlertState] = useState(null);
+  const isQuizClosed = Boolean(quiz && quiz.status !== 'OPEN');
 
   const showAlert = useCallback((type, message) => {
     setAlertState({ type, message });
@@ -157,6 +158,11 @@ function HomePage() {
     }
 
     if (!quiz?.quizId || submitting) {
+      return;
+    }
+
+    if (quiz.status !== 'OPEN') {
+      showAlert('warning', '오늘 퀴즈 투표가 마감되었습니다.');
       return;
     }
 
@@ -264,7 +270,7 @@ function HomePage() {
 
         <div className="divider" />
 
-        {!voted ? (
+        {!voted && !isQuizClosed ? (
           <div className="vote-section">
             <p className="section-title">내일 종가를 예측해 보세요</p>
             <p className="section-desc">1인 1회</p>
@@ -294,12 +300,16 @@ function HomePage() {
           <div className="stats-section">
             <div className="stats-header">
               <p className="section-title">실시간 투표 현황</p>
-              <span className="voted-chip">참여 완료</span>
+              <span className="voted-chip">{voted ? '참여 완료' : '투표 마감'}</span>
             </div>
             <VoteBar stats={stats} />
             <div className="result-notice">
               <span className="result-notice-icon">⏰</span>
-              <span>정답은 <strong>내일 장 마감 후</strong> 확인할 수 있어요</span>
+              <span>
+                {voted
+                  ? <>정답은 <strong>내일 장 마감 후</strong> 확인할 수 있어요</>
+                  : <>오늘 퀴즈 투표가 마감되었습니다. 정답은 <strong>내일 장 마감 후</strong> 확인할 수 있어요</>}
+              </span>
             </div>
           </div>
         )}
